@@ -114,8 +114,6 @@ class WebSocketProvide {
         }
         if (response.containsKey('ch')) {
           await handle_exchange_message(channelMaster, simb, response);
-        } else {
-          //print('received: ${response}');
         }
       } else {
         if (permanent) {
@@ -294,7 +292,6 @@ class WebSocketProvide {
             if (env['print_handle'] == 'true') {
               print('await handle_trading_status(ws, resp);');
             }
-            //print('${resp}');
           }
           break;
 
@@ -315,7 +312,6 @@ class WebSocketProvide {
 
 //verifica permessi trading
   Future handle_trading_status(ws, msg) async {
-    //print('handle_trading_status= ${msg}');
     var data = msg['data'];
     if (data['available'] == true) {
       trading_available = true;
@@ -330,24 +326,10 @@ class WebSocketProvide {
 
 //prezzo ladder
   Future handle_trades(ws, msg, simb) async {
-    //print('ladderPx_ALL: ${msg['data']['trades']}');
     for (var item in msg['data']['trades']) {
       ladderPx = item['px'].toDouble();
-      //print('ladderPx_${msg['data']['trades'].indexOf(item)} = ${item['px']}');
     }
-    //print('LAST ladderPx= ${ladderPx}');
     getTraderStatus(channel: channelMaster, symbol: '${simb}-PERP');
-
-    /*
-    if (ladderPx != msg['data']['trades'][0]['px']) {
-      for (var item in msg['data']['trades']) {
-        ladderPx = item['px'].toDouble();
-      }
-      //print('ladderPx= ${ladderPx}');
-      getTraderStatus(channel: channelMaster, symbol: '${simb}-PERP');
-    }
-
-    */
   }
 
   //richiesta stato
@@ -364,7 +346,6 @@ class WebSocketProvide {
 
   //risposta stato
   Future handle_trader_status(ws, msg, simb) async {
-    //print(msg['data']);
     var data = msg['data'];
     data_trade = data;
     var trader_balance = data['traderBalance'].toDouble();
@@ -381,30 +362,6 @@ class WebSocketProvide {
     var positionBankruptcyVolume = data['positionBankruptcyVolume'];
     positionType_start = data['positionType'];
     funzioneControlloOrdini(data);
-    /*
-    print('positionVolume: ${positionVolume}');
-    print('positionLiquidationVolume: ${positionLiquidationVolume}');
-    print('positionBankruptcyVolume: ${positionBankruptcyVolume}');
-    print('positionType: ${positionType}');
-    print('traderBalance: ${trader_balance}');
-    print('orderMargin: ${orderMargin}');
-    print('positionMargin: ${positionMargin}');
-    print('total margin: ${positionMargin + orderMargin}');
-
-    /*print('Datetime: ${DateTime.now()}');
-    print('positionType: ${positionType}');
-    print('orderMargin: ${orderMargin}');
-    print('positionMargin: ${positionMargin}');
-    print('positionContracts: ${positionContracts}');
-    print('positionVolume: ${positionVolume}');
-    print('positionLiquidationVolume: ${positionLiquidationVolume}');
-    print('positionBankruptcyVolume: ${positionBankruptcyVolume}');
-    print('contracts: ${data['activeOrders'].length}');
-    */
-    //print(
-    //'ABal: ${trader_balance - ((data['activeOrders'].length + positionContracts) * (orderMargin / 2))}');*/
-    //print('ABal: ${positionMargin + orderMargin}');
-    //print('ABal: ${trader_balance - positionMargin}');
     if (balance != trader_balance) {
       balance = trader_balance;
       if (balance_Start == 0.0) {
@@ -436,7 +393,6 @@ class WebSocketProvide {
     if (data.containsKey('positionType')) {
       var total_contracts = data['positionContracts'];
       var pos_type = data['positionType'];
-      //print('trader position: ${pos_type}@${total_contracts}');
     }
     open_contracts = {};
     if (data.containsKey('contracts')) {
@@ -445,7 +401,6 @@ class WebSocketProvide {
         var contract_id = c['contractId'];
         open_contracts[contract_id] = c;
       });
-      //print('open contracts: ${open_contracts}');
     }
 
     var symbol = data['symbol'];
@@ -481,7 +436,6 @@ class WebSocketProvide {
           active_orders_ListPx.add(px);
         }
       });
-      //print('active_orders handle_trader_status: $active_orders');
     }
 
     if (data.containsKey('conditionalOrders')) {
@@ -491,7 +445,6 @@ class WebSocketProvide {
         active_cond_orders[action_id] = co;
       });
     }
-    //print('active conditional orders: $active_cond_orders');
 
     await funzione_Orario(data['symbol']);
     ladderPx_List_DW = {};
@@ -504,8 +457,6 @@ class WebSocketProvide {
     var out = 0;
     var out_S = 0;
     var out_B = 0;
-    //print(positionType);
-    //print(contract_value);
     if (positionType == 'SHORT') {
       out_S = 0; //-positionContracts; //0;
       out_B = -positionContracts; // 0;
@@ -529,19 +480,7 @@ class WebSocketProvide {
     if (out_S > out_B) {
       out = out_S;
     }
-    /*
-    if (positionType == 'SHORT') {
-      out_B = out_B - positionContracts;
-    } else if (positionType == 'LONG') {
-      out_S = out_S - positionContracts;
-    }
-    if (tp == 'BUY') {
-      out = out_B;
-    } else if (tp == 'SELL') {
-      out = out_S;
-    }
-    out = out_S - out_B;*/
-    //out = out - positionContracts;
+
     return out;
   }
 
@@ -558,9 +497,6 @@ class WebSocketProvide {
       var qty = data['qty'];
 
       if (ord_type == 'LIMIT') {
-        //print('order ${cl_ord_id} has been ACCEPTED: ${msg}');
-        //print('LIMIT open_contracts: ${active_orders_ListPx.length}');
-        //print('LIMIT active_orders: ${active_orders.length}');
         if (qty > amount_B && data['orderSide'] == 'LONG') {
           if (env['print_cancel'] == 'true') {
             print(
@@ -585,13 +521,6 @@ class WebSocketProvide {
               px: data['px'],
               side: 'BUY');
         }
-        /*active_orders.forEach((key, value) {
-          if (px == value['px']) {
-            //print('LIMIT px: ${value['px']}');
-            cancel_limit_order_all(
-                channel: channelMaster, symbol: symbol, px: px, side: '');
-          }
-        });*/
       }
 
       var res = {
@@ -602,7 +531,6 @@ class WebSocketProvide {
         'px': px,
         'qty': qty
       };
-      //active_orders['$cl_ord_id'] = res;
     } else if (status == 'REJECTED' && data.containsKey('errCode')) {
       var error_code = data['errCode'];
       if (env['print_error'] == 'true') {
@@ -612,14 +540,8 @@ class WebSocketProvide {
           print('REJECTED open_contracts: ${active_orders_ListPx.length}');
           print('REJECTED active_orders: ${active_orders.length}');
           print('data position close: ${data_trade['positionType']}');
-
-          //await funzione_closeAll_Limit(data['symbol']);
         }
       }
-
-      //await contracts_limit_list.remove(data['px']);
-      //cancel_limit_order_all(
-      //channel: channelMaster, symbol: data['symbol'], px: 0, side: 'SELL');
     }
     return 0;
   }
@@ -629,82 +551,13 @@ class WebSocketProvide {
     var filled_ord_id = data['clOrdId'];
     var order_status = data['orderStatus'];
 
-    // if (order_status == 'FILLED') {
-    //   //print('order ${filled_ord_id} has been FILLED');
-    // } else if (order_status == 'PARTIALLY_FILLED') {
-    //   //print('order ${filled_ord_id} has been PARTIALLY FILLED');
-    // } else {
-    //   //print('order ${filled_ord_id} has status: ${order_status}');
-    // }
-    //print(msg['data']['px']);
     if (active_orders.containsKey('$filled_ord_id')) {
       if (funzioneRound(msg['data']['symbol'], msg['data']['px'].toDouble())) {
         active_orders.remove(filled_ord_id);
         active_orders_ListPx.remove(msg['data']['px']);
       }
     }
-
-    //print('active orders handle_order_filled: ${active_orders}');
   }
-
-/*
-funzioneOrdini(simb) async {
-    var sideX = '';
-    var numero = n_order;
-    if (env['Alternate'] == 'true') {
-      numero = n_order * 2;
-    }
-    while (numero >= -n_order) {
-      if (numero < -int.parse(env['DeltaOrdini']) ||
-          numero > int.parse(env['DeltaOrdini'])) {
-        if (funzioneRound(simb, ladderPx.toDouble())) {
-          if (a_Balance > contract_value * 2) {
-            ladderPx_List
-                .add(ladderPx + (numero * ws_util.tickSize('${simb}-PERP')));
-          } else {
-            if (positionType_start == 'LONG' &&
-                numero > int.parse(env['DeltaOrdini'])) {
-              ladderPx_List
-                  .add(ladderPx + (numero * ws_util.tickSize('${simb}-PERP')));
-            }
-            if (positionType_start == 'SHORT' &&
-                numero < -int.parse(env['DeltaOrdini'])) {
-              ladderPx_List
-                  .add(ladderPx + (numero * ws_util.tickSize('${simb}-PERP')));
-            }
-          }
-        }
-      }
-      numero--;
-    }
-
-    //print(ladderPx_List);
-
-    for (var item in ladderPx_List) {
-      if (item < ladderPx) {
-        sideX = 'BUY';
-      }
-      if (item > ladderPx) {
-        sideX = 'SELL';
-      }
-      if (!active_orders_ListPx.contains(item)) {
-        var funzione_orario = await funzione_Orario('${simb}-PERP');
-        if (startBotTrading && funzione_orario) {
-          if (funzioneRound(simb, item.toDouble())) {
-            place_limit_order(
-                symbol: '${simb}-PERP',
-                side: sideX,
-                price: item,
-                amount: double.parse(env['Size']),
-                tif: 'GTC');
-          }
-        }
-
-        //print('open order $item');
-      }
-    }
-  }
-*/
 
   funzioneOrdini(simb) async {
     var sideX = '';
@@ -713,18 +566,13 @@ funzioneOrdini(simb) async {
       numero = n_order * 2;
     }
     if (int.parse(env['AddLimit']) > 0) {
-      //print('data_trade[positionType]: ${data_trade['positionType']}');
       if (data_trade['positionType'] == null) {
-        //attiva_SELL = false;
-        //attiva_BUY = true;
         amount_B = double.parse(env['Size']);
         amount_S = double.parse(env['Size']);
         cancel_S = true;
         cancel_B = true;
       }
       if (data_trade['positionType'] == 'SHORT') {
-        //attiva_SELL = false;
-        //attiva_BUY = true;
         amount_B = double.parse(env['Size']) + int.parse(env['AddLimit']);
         amount_S = double.parse(env['Size']);
         if (!cancel_B) {
@@ -739,8 +587,6 @@ funzioneOrdini(simb) async {
         }
       }
       if (data_trade['positionType'] == 'LONG') {
-        //attiva_BUY = false;
-        //attiva_SELL = true;
         amount_S = double.parse(env['Size']) + int.parse(env['AddLimit']);
         amount_B = double.parse(env['Size']);
         if (!cancel_S) {
@@ -765,24 +611,18 @@ funzioneOrdini(simb) async {
         ladderPx_List_UP.isNotEmpty &&
         ladderPx_List_DW.isNotEmpty) {
       if (ladderPx_List_DW.last <= ladderPxMax_Near) {
-        // print(
-        //     'Cancell order liquidity - side: ${u['orderSide']} id: ${u['clOrdId']} px: ${u['px']}');
         await cancel_limit_order_all(
             channel: channelMaster,
             symbol: data_trade['symbol'],
             px: ladderPx_List_DW.last,
             side: '');
-        //list.add(items['activeOrders'].first['px']);
       }
       if (ladderPx_List_UP.last >= ladderPxMin_Near) {
-        // print(
-        //     'Cancell order liquidity - side: ${u['orderSide']} id: ${u['clOrdId']} px: ${u['px']}');
         await cancel_limit_order_all(
             channel: channelMaster,
             symbol: data_trade['symbol'],
             px: ladderPx_List_UP.last,
             side: '');
-        //list.add(items['activeOrders'].first['px']);
       }
     }
 
@@ -792,7 +632,6 @@ funzioneOrdini(simb) async {
 
         if (funzioneRound(simb, priceToadd_S) && attiva_SELL) {
           ladderPx_List_UP.add(priceToadd_S);
-          //print('Ladder DW: ${priceToadd_S} ladder: ${ladderPx}');
           active_orders_ListPx_controll.add(priceToadd_S);
         }
       }
@@ -802,13 +641,10 @@ funzioneOrdini(simb) async {
         var priceToadd_B = ladderPx + (i * ws_util.tickSize('${simb}-PERP'));
         if (funzioneRound(simb, priceToadd_B) && attiva_BUY) {
           ladderPx_List_DW.add(priceToadd_B);
-          //print('Ladder UP: ${priceToadd_B} ladder: ${ladderPx}');
           active_orders_ListPx_controll.add(priceToadd_B);
         }
       }
     }
-
-    //print(ladderPx_List);
 
     for (var item in ladderPx_List_DW) {
       sideX = 'BUY';
@@ -824,8 +660,6 @@ funzioneOrdini(simb) async {
                 tif: 'GTC');
           }
         }
-
-        //print('open order $item');
       }
     }
     for (var item in ladderPx_List_UP) {
@@ -842,8 +676,6 @@ funzioneOrdini(simb) async {
                 tif: 'GTC');
           }
         }
-
-        //print('open order $item');
       }
     }
   }
@@ -928,7 +760,6 @@ funzioneOrdini(simb) async {
       'method': 'closePosition',
       'params': params
     };
-    //print('closing position');
     channel.sink.add(json.encode(req));
   }
 
@@ -981,19 +812,14 @@ funzioneOrdini(simb) async {
 
     data['orders'].forEach((order) async {
       var cancelled_order_id = order['oldClOrdId'];
-      //print('order ${cancelled_order_id} has been CANCELLED');
-      //print(active_orders[cancelled_order_id]);
       if (active_orders.containsKey('$cancelled_order_id')) {
         if (funzioneRound(msg['data']['symbol'],
             active_orders[cancelled_order_id]['px'].toDouble())) {
-          //print(active_orders[cancelled_order_id]['px']);
           active_orders_ListPx.remove(active_orders[cancelled_order_id]['px']);
           active_orders.remove(cancelled_order_id);
         }
       }
     });
-
-    //print('active orders handle_order_cancelled: ${active_orders}');
   }
 
   funzione_Balance(bilancio, symbol) async {
@@ -1041,7 +867,6 @@ funzioneOrdini(simb) async {
       }
       if (metod_S == 'closeSoft') {
         bilancio = 0;
-        //print(upnl);
         if (upnl > double.parse(env['SogliaCloseSoft']) ||
             env['SogliaCloseSoft'] == '0') {
           await funzione_closeAll_Limit(symbol);
@@ -1092,7 +917,6 @@ funzioneOrdini(simb) async {
       }
       if (metod_T == 'closeSoft') {
         bilancio = 0;
-        //print(upnl);
         if (upnl > double.parse(env['SogliaCloseSoft']) ||
             env['SogliaCloseSoft'] == '0') {
           await funzione_closeAll_Limit(symbol);
@@ -1144,7 +968,6 @@ funzioneOrdini(simb) async {
             'UPnL (${metod_S}) stop (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
       if (metod_S == 'closeSoft') {
-        //print(upnl);
         if (upnl > double.parse(env['SogliaCloseSoft']) ||
             env['SogliaCloseSoft'] == '0') {
           await funzione_closeAll_Limit(symbol);
@@ -1187,7 +1010,6 @@ funzioneOrdini(simb) async {
             'UPnL (${metod_T}) stop (takeprofit): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
       if (metod_T == 'closeSoft') {
-        //print(upnl);
         if (upnl > double.parse(env['SogliaCloseSoft']) ||
             env['SogliaCloseSoft'] == '0') {
           await funzione_closeAll_Limit(symbol);
@@ -1203,7 +1025,6 @@ funzioneOrdini(simb) async {
   funzione_open_contracts(bilancio, symbol) async {
     var stop_take = env['stopOpen_Contracts'];
     var metod_S_T = env['metodoOpen_Contracts'];
-    //print('funzione_open_contracts: bilancio $bilancio');
     if (stop_take != '0' && bilancio >= double.parse(stop_take)) {
       if (env['print_limit_order'] == 'true') {
         print(
@@ -1245,7 +1066,6 @@ funzioneOrdini(simb) async {
       }
       if (metod_S_T == 'closeSoft') {
         bilancio = 0;
-        //print(upnl);
         if (upnl > double.parse(env['SogliaCloseSoft']) ||
             env['SogliaCloseSoft'] == '0') {
           await funzione_closeAll_Limit(symbol);
@@ -1302,23 +1122,18 @@ funzioneOrdini(simb) async {
 
   void funzione_StopBot() {
     startBotTrading = false;
-    //startBotTrading = true;
-    //controlCancellAll = false;
   }
 
   bool funzioneRound(String symbol, double price) {
     if (env['Alternate'] == 'false') {
       return true;
     } else if (env['Alternate'] == 'true') {
-      //print(symbol);
       if (symbol == 'BTCUSD') {
         var pr = price.toInt().toString();
         return pr.endsWith('5');
       }
       if (symbol == 'ETHUSD') {
-        var pr = (price * 100).toInt().toString();
-        print(pr);
-        return pr.endsWith('5');
+        return price.toInt().isOdd;
       }
       if (symbol == 'XRPUSD') {
         return price.toInt().isOdd;
@@ -1356,7 +1171,6 @@ funzioneOrdini(simb) async {
         if (funzione_ST()) {
           startBotTrading = true;
         }
-        //startBotTrading = true;
         stop_time = 'false';
         return (true);
       }
@@ -1495,47 +1309,13 @@ funzioneOrdini(simb) async {
     contract_value = ticker['contractValue'].toDouble() / leverage;
     // ignore: unused_local_variable
     var dgtx_rate = ticker['dgtxUsdRate'];
-    //print('got 24 stats: from=${open_ts} to=${close_ts} high_price=${high_px} '
-    //'low_price=${low_px} price_change=${px_change} volume=${volume24h} '
-    //'funding_rate=${funding_rate} contract_value=${contract_value} DGTX/USD=${dgtx_rate}');
   }
 
   funzioneControlloOrdini(items) async {
-    // var lmt_down = int.parse(env['DeltaOrdini']);
-
-    // var ladderPxMax_Near =
-    //     ladderPx + (lmt_down * ws_util.tickSize(items['symbol']));
-    // var ladderPxMin_Near =
-    //     ladderPx - (lmt_down * ws_util.tickSize(items['symbol']));
-
     var list = [];
-    // if (env['Liquidity'] == 'true' && items['activeOrders'].isNotEmpty) {
-    //   if (items['activeOrders'].first['px'] <= ladderPxMax_Near) {
-    //     // print(
-    //     //     'Cancell order liquidity - side: ${u['orderSide']} id: ${u['clOrdId']} px: ${u['px']}');
-    //     await cancel_limit_order_all(
-    //         channel: channelMaster,
-    //         symbol: items['symbol'],
-    //         px: items['activeOrders'].first['px'],
-    //         side: '');
-    //     //list.add(items['activeOrders'].first['px']);
-    //   }
-    //   if (items['activeOrders'].first['px'] >= ladderPxMin_Near) {
-    //     // print(
-    //     //     'Cancell order liquidity - side: ${u['orderSide']} id: ${u['clOrdId']} px: ${u['px']}');
-    //     await cancel_limit_order_all(
-    //         channel: channelMaster,
-    //         symbol: items['symbol'],
-    //         px: items['activeOrders'].last['px'],
-    //         side: '');
-    //     //list.add(items['activeOrders'].first['px']);
-    //   }
-    // }
 
     items['activeOrders'].forEach((u) {
-      //print('U: ${u}');
       if (list.contains(u['px'])) {
-        //print('duplicate ${u['px']}');
         if (env['print_cancel'] == 'true') {
           print(
               'Cancell order duplicate - side: ${u['orderSide']} qty: ${u['qty']} px: ${u['px']}');
