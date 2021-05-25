@@ -14,7 +14,8 @@ Future<void> main(List<String> arguments) async {
       params: [
         '${env['Cross']}-PERP@index',
         '${env['Cross']}-PERP@trades',
-        '${env['Cross']}-PERP@ticker'
+        '${env['Cross']}-PERP@ticker',
+        '${env['Cross']}-PERP@orderbook_1'
       ]);
   //} else {
   //  print('Attesa orario...');

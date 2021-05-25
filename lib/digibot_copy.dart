@@ -72,6 +72,9 @@ class WebSocketProvide {
   var amount_S = double.parse(env['Size']);
   bool cancel_B = true;
   bool cancel_S = true;
+  List diffOrderbook = [];
+  var mean = 0.0;
+  var limitSpread = double.parse(env['stopOpen_Spread']);
 
   Stream getWsMaster({String uri, String simb, String authcode, List params}) {
     channelMaster = IOWebSocketChannel.connect(uri);
@@ -145,6 +148,7 @@ class WebSocketProvide {
             if (env['print_handle'] == 'true') {
               print('await handle_orderbook(ws, resp);');
             }
+            handle_orderbook_status(ws, resp);
           }
           break;
         case 'trades':
@@ -310,6 +314,23 @@ class WebSocketProvide {
     }
   }
 
+  Future handle_orderbook_status(ws, msg) async {
+    var data = msg['data'];
+    //print('orderbook: ${data}');
+    //print('orderbook_BID: ${data['bids'][0][0]}');
+    //print('orderbook_ASK: ${data['asks'][0][0]}');
+    //print('orderbook: ${(data['asks'][0][0] - data['bids'][0][0]) / 5}');
+    diffOrderbook.add((data['asks'][0][0] - data['bids'][0][0]) / 5);
+    if (diffOrderbook.length > double.parse(env['rangeMean'])) {
+      diffOrderbook.removeAt(0);
+      //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
+    }
+    //print('orderbook list: ${diffOrderbook}');
+    mean = diffOrderbook.reduce((a, b) => a + b) / diffOrderbook.length;
+
+    //print('orderbook mean: ${mean} length: ${diffOrderbook.length}');
+  }
+
 //verifica permessi trading
   Future handle_trading_status(ws, msg) async {
     var data = msg['data'];
@@ -361,6 +382,7 @@ class WebSocketProvide {
     var positionLiquidationVolume = data['positionLiquidationVolume'];
     var positionBankruptcyVolume = data['positionBankruptcyVolume'];
     positionType_start = data['positionType'];
+
     funzioneControlloOrdini(data);
     if (balance != trader_balance) {
       balance = trader_balance;
@@ -370,7 +392,8 @@ class WebSocketProvide {
       var diff_balance = balance - balance_Start;
       funzione_Balance(diff_balance, data['symbol']);
       if (env['print_info_bal'] == 'true') {
-        print('trader diff_balance: ${diff_balance}');
+        print(
+            'trader diff_balance: ${diff_balance} average: ${mean} limit: ${limitSpread}');
       }
     }
 
@@ -382,9 +405,14 @@ class WebSocketProvide {
       }
     }
 
+    if (env['stopOpen_Spread'] != '0') {
+      funzione_filter_spread(env['Cross']);
+    } else {}
+
     if (open_contracts_start != positionContracts) {
       open_contracts_start = positionContracts;
       funzione_open_contracts(positionContracts, data['symbol']);
+
       if (env['print_info_ctr'] == 'true') {
         print('trader Open_contracts: ${open_contracts_start}');
       }
@@ -724,7 +752,7 @@ class WebSocketProvide {
     channel.sink.add(json.encode(req));
   }
 
-  Future<void> cancel_limit_order_all(
+  cancel_limit_order_all(
       {@required IOWebSocketChannel channel,
       @required String symbol,
       @required num px,
@@ -739,8 +767,7 @@ class WebSocketProvide {
       'method': 'cancelAllOrders',
       'params': params
     };
-    var time = Duration(milliseconds: 1000);
-    await Future.delayed(time);
+
     channel.sink.add(json.encode(req));
   }
 
@@ -753,13 +780,14 @@ class WebSocketProvide {
       print('price must be specified for LIMIT order');
       return null;
     }
-    var params = {'symbol': symbol, 'ordType': ord_type, 'px': px};
+    var params = {'symbol': '${symbol}-PERP', 'ordType': ord_type, 'px': px};
 
     var req = {
       'id': ws_util.next_req_id,
       'method': 'closePosition',
       'params': params
     };
+    print('close_position: $params');
     channel.sink.add(json.encode(req));
   }
 
@@ -1025,6 +1053,7 @@ class WebSocketProvide {
   funzione_open_contracts(bilancio, symbol) async {
     var stop_take = env['stopOpen_Contracts'];
     var metod_S_T = env['metodoOpen_Contracts'];
+
     if (stop_take != '0' && bilancio >= double.parse(stop_take)) {
       if (env['print_limit_order'] == 'true') {
         print(
@@ -1078,6 +1107,7 @@ class WebSocketProvide {
       }
 
       if (metod_S_T == 'stopLimit') {
+        //print('STOP LIMIT ACTIVATE');
         if (data_trade['positionType'] == 'SHORT' && attiva_SELL) {
           attiva_SELL = false;
           attiva_BUY = true;
@@ -1101,6 +1131,51 @@ class WebSocketProvide {
         (!attiva_BUY || !attiva_SELL)) {
       attiva_BUY = true;
       attiva_SELL = true;
+    }
+  }
+
+  funzione_filter_spread(symbol) async {
+    //var stop_take = env['stopOpen_Spread'];
+    //print('orderbook mean: ${mean}');
+    //print('data_trade : ${data_trade}');
+
+    if (limitSpread != 0 && mean >= limitSpread) {
+      if (limitSpread != double.parse(env['stopOpen_Spread'])) {
+        limitSpread = limitSpread - double.parse(env['deltaSpread']);
+        print('mean >= limitSpread, new: ${limitSpread}');
+        print('STOP TRADING SPREAD!!');
+      }
+      if (open_contracts.length == 0) {
+        if (startBotTrading) {
+          startBotTrading = false;
+          print('CANCELL AND STOP');
+        }
+
+        if (data_trade['activeOrders'].length != 0) {
+          print('CANCELL AND STOP activeOrders');
+          cancel_limit_order_all(
+              channel: channelMaster,
+              symbol: '${symbol}-PERP',
+              px: 0,
+              side: 'SELL');
+          cancel_limit_order_all(
+              channel: channelMaster,
+              symbol: '${symbol}-PERP',
+              px: 0,
+              side: 'BUY');
+        }
+      }
+      if (open_contracts.length != 0 &&
+          data_trade['activeOrders'].length == 0) {
+        await funzione_closeAll_Contract(symbol);
+      }
+    } else if (limitSpread != 0 && mean < limitSpread && !startBotTrading) {
+      if (limitSpread == double.parse(env['stopOpen_Spread'])) {
+        limitSpread = limitSpread + double.parse(env['deltaSpread']);
+        print('mean < limitSpread, new: ${limitSpread}');
+        startBotTrading = true;
+        print('START TRADING SPREAD!!');
+      }
     }
   }
 
