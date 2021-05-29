@@ -1185,11 +1185,11 @@ class WebSocketProvide {
         print('new limit spread: ${limitSpread}');
       }
       if (env['close_instantly'] == 'true') {
-        print('close_instantly');
+        //print('close_instantly');
         if (startBotTrading) {
           startBotTrading = false;
         }
-
+        /*
         cancel_limit_order_all(
             channel: channelMaster,
             symbol: '${symbol}-PERP',
@@ -1201,11 +1201,13 @@ class WebSocketProvide {
             px: 0,
             side: 'BUY');
 
-        await funzione_closeAll_Contract(symbol);
+        funzione_closeAll_Contract(symbol);
+        */
         close_All(symbol);
+        //print('close_instantly');
       } else {
         print('close_delay');
-        if (open_contracts.length == 0) {
+        if (data_trade['positionContracts'] == 0) {
           if (startBotTrading) {
             startBotTrading = false;
           }
@@ -1223,7 +1225,7 @@ class WebSocketProvide {
                 side: 'BUY');
           }
         }
-        if (open_contracts.length != 0 &&
+        if (data_trade['positionContracts'] != 0 &&
             data_trade['activeOrders'].length == 0) {
           await funzione_closeAll_Contract(symbol);
           close_All(symbol);
@@ -1262,8 +1264,8 @@ class WebSocketProvide {
       cancel_limit_order_all(
           channel: channelMaster, symbol: '${symbol}-PERP', px: 0, side: 'BUY');
     }
-    if (open_contracts.length > 0) {
-      await funzione_closeAll_Contract(symbol);
+    if (data_trade['positionContracts'] > 0) {
+      funzione_closeAll_Contract(symbol);
     }
   }
 
@@ -1275,12 +1277,10 @@ class WebSocketProvide {
   }
 
   Future funzione_closeAll_Contract(symbol) async {
-    if (open_contracts_start > 0) {
-      await close_position(
-          channel: channelMaster, symbol: symbol, px: 0, ord_type: 'MARKET');
-      var time = Duration(milliseconds: 50);
-      return await Future.delayed(time);
-    }
+    await close_position(
+        channel: channelMaster, symbol: symbol, px: 0, ord_type: 'MARKET');
+    var time = Duration(milliseconds: 50);
+    return await Future.delayed(time);
   }
 
   void funzione_StopBot() {
