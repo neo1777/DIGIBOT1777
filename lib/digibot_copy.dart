@@ -57,7 +57,8 @@ class WebSocketProvide {
   double balance_Start = 0.0;
   double pnl = 0.0;
   int open_contracts_start = 0;
-
+  var diff_balance = 0.0;
+  DateTime time_start;
   double upnl = 0.0;
   int leverage = 0;
   double upnl_Start = 0.0;
@@ -320,7 +321,8 @@ class WebSocketProvide {
     //print('orderbook_BID: ${data['bids'][0][0]}');
     //print('orderbook_ASK: ${data['asks'][0][0]}');
     //print('orderbook: ${(data['asks'][0][0] - data['bids'][0][0]) / 5}');
-    diffOrderbook.add((data['asks'][0][0] - data['bids'][0][0]) / 5);
+    diffOrderbook.add((data['asks'][0][0] - data['bids'][0][0]) /
+        Ws_Util().tickSize(env['Cross']));
     if (diffOrderbook.length > double.parse(env['rangeMean'])) {
       diffOrderbook.removeAt(0);
       //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
@@ -336,7 +338,8 @@ class WebSocketProvide {
     var data = msg['data'];
     if (data['available'] == true) {
       trading_available = true;
-      print('Time: ${DateTime.now()}');
+      time_start = DateTime.now();
+      print('Time: ${time_start}');
       print('trading: AVAILABLE');
     } else {
       trading_available = false;
@@ -389,7 +392,7 @@ class WebSocketProvide {
       if (balance_Start == 0.0) {
         balance_Start = balance;
       }
-      var diff_balance = balance - balance_Start;
+      diff_balance = balance - balance_Start;
       funzione_Balance(diff_balance, data['symbol']);
       if (env['print_info_bal'] == 'true') {
         print(

@@ -20,6 +20,19 @@ Future<void> main(List<String> arguments) async {
   //} else {
   //  print('Attesa orario...');
   //}
+
+  if (env['print_info'] == 'true') {
+    var time = Duration(seconds: int.parse(env['time_print_seconds']));
+    Timer.periodic(time, (timer) {
+      var now = DateTime.now();
+      Duration difference = now.difference(dgtx.time_start);
+      print('');
+      print(
+          '${now.day}/${now.month}/${now.year} - ${now.hour}:${now.minute} Run time hours: ${difference.inHours}');
+      print('Profit balance: ${dgtx.diff_balance}');
+      print('Spread average: ${dgtx.mean} limit: ${dgtx.limitSpread}');
+    });
+  }
 }
 //DGTXBTCUSD
 //3,766
