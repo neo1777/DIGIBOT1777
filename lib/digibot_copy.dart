@@ -5,6 +5,8 @@ import 'package:random_string/random_string.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:meta/meta.dart';
 import 'package:dotenv/dotenv.dart';
+import 'package:moving_average/moving_average.dart';
+import 'package:decimal/decimal.dart';
 
 class Ws_Util {
   static int req_id = 0;
@@ -73,9 +75,13 @@ class WebSocketProvide {
   var amount_S = double.parse(env['Size']);
   bool cancel_B = true;
   bool cancel_S = true;
-  List diffOrderbook = [];
+  List<num> diffOrderbook = [];
   var mean = 0.0;
-  var limitSpread = double.parse(env['stopOpen_Spread']);
+  var mean_exponential = 0.0;
+
+  Decimal limitSpread = Decimal.parse(env['stopOpen_Spread']);
+  bool firstTimeUp = true;
+  bool firstTimeDw = true;
 
   Stream getWsMaster({String uri, String simb, String authcode, List params}) {
     channelMaster = IOWebSocketChannel.connect(uri);
@@ -323,12 +329,32 @@ class WebSocketProvide {
     //print('orderbook: ${(data['asks'][0][0] - data['bids'][0][0]) / 5}');
     diffOrderbook.add((data['asks'][0][0] - data['bids'][0][0]) /
         Ws_Util().tickSize(env['Cross']));
-    if (diffOrderbook.length > double.parse(env['rangeMean'])) {
+    final simpleMovingAverage = MovingAverage<num>(
+      averageType: AverageType.simple,
+      windowSize: int.parse(env['rangeMean']),
+      partialStart: true,
+      getValue: (num n) => n,
+      add: (List<num> data, num value) => value,
+    );
+    final ema = MovingAverage<num>(
+      averageType: AverageType.exponential,
+      windowSize: int.parse(env['rangeMean']),
+      partialStart: true,
+      factor: 0.1,
+      getValue: (num n) => n,
+      add: (List<num> data, num value) => value,
+    );
+    final exponential = ema(diffOrderbook);
+    final movingAverage3 = simpleMovingAverage(diffOrderbook);
+    //print("Moving Average, size 500, last = ${movingAverage3.last}");
+    if (diffOrderbook.length > int.parse(env['rangeMean'])) {
       diffOrderbook.removeAt(0);
       //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
     }
     //print('orderbook list: ${diffOrderbook}');
-    mean = diffOrderbook.reduce((a, b) => a + b) / diffOrderbook.length;
+    //mean = diffOrderbook.reduce((a, b) => a + b) / diffOrderbook.length;
+    mean = movingAverage3.last;
+    mean_exponential = exponential.last;
 
     //print('orderbook mean: ${mean} length: ${diffOrderbook.length}');
   }
@@ -1142,43 +1168,102 @@ class WebSocketProvide {
     //print('orderbook mean: ${mean}');
     //print('data_trade : ${data_trade}');
 
-    if (limitSpread != 0 && mean >= limitSpread) {
-      if (limitSpread != double.parse(env['stopOpen_Spread'])) {
-        limitSpread = limitSpread - double.parse(env['deltaSpread']);
-        print('mean >= limitSpread, new: ${limitSpread}');
+    if (limitSpread != 0 && mean >= limitSpread.toDouble()) {
+      if (firstTimeUp) {
+        print('');
+        print(DateTime.now());
         print('STOP TRADING SPREAD!!');
+        print('new limit spread: ${limitSpread}');
+        firstTimeUp = false;
+        firstTimeDw = false;
       }
-      if (open_contracts.length == 0) {
+      if (limitSpread != Decimal.parse(env['stopOpen_Spread'])) {
+        limitSpread = limitSpread - Decimal.parse(env['deltaSpread']);
+        print('');
+        print(DateTime.now());
+        print('STOP TRADING SPREAD!!');
+        print('new limit spread: ${limitSpread}');
+      }
+      if (env['close_instantly'] == 'true') {
+        print('close_instantly');
         if (startBotTrading) {
           startBotTrading = false;
-          print('CANCELL AND STOP');
         }
 
-        if (data_trade['activeOrders'].length != 0) {
-          print('CANCELL AND STOP activeOrders');
-          cancel_limit_order_all(
-              channel: channelMaster,
-              symbol: '${symbol}-PERP',
-              px: 0,
-              side: 'SELL');
-          cancel_limit_order_all(
-              channel: channelMaster,
-              symbol: '${symbol}-PERP',
-              px: 0,
-              side: 'BUY');
+        cancel_limit_order_all(
+            channel: channelMaster,
+            symbol: '${symbol}-PERP',
+            px: 0,
+            side: 'SELL');
+        cancel_limit_order_all(
+            channel: channelMaster,
+            symbol: '${symbol}-PERP',
+            px: 0,
+            side: 'BUY');
+
+        await funzione_closeAll_Contract(symbol);
+        close_All(symbol);
+      } else {
+        print('close_delay');
+        if (open_contracts.length == 0) {
+          if (startBotTrading) {
+            startBotTrading = false;
+          }
+
+          if (data_trade['activeOrders'].length != 0) {
+            cancel_limit_order_all(
+                channel: channelMaster,
+                symbol: '${symbol}-PERP',
+                px: 0,
+                side: 'SELL');
+            cancel_limit_order_all(
+                channel: channelMaster,
+                symbol: '${symbol}-PERP',
+                px: 0,
+                side: 'BUY');
+          }
+        }
+        if (open_contracts.length != 0 &&
+            data_trade['activeOrders'].length == 0) {
+          await funzione_closeAll_Contract(symbol);
+          close_All(symbol);
         }
       }
-      if (open_contracts.length != 0 &&
-          data_trade['activeOrders'].length == 0) {
-        await funzione_closeAll_Contract(symbol);
-      }
-    } else if (limitSpread != 0 && mean < limitSpread && !startBotTrading) {
-      if (limitSpread == double.parse(env['stopOpen_Spread'])) {
-        limitSpread = limitSpread + double.parse(env['deltaSpread']);
-        print('mean < limitSpread, new: ${limitSpread}');
-        startBotTrading = true;
+    } else if (limitSpread != 0 &&
+        mean < limitSpread.toDouble() &&
+        !startBotTrading) {
+      if (firstTimeDw) {
+        print('');
+        print(DateTime.now());
         print('START TRADING SPREAD!!');
+        print('new limit spread: ${limitSpread}');
+        firstTimeDw = false;
+        firstTimeUp = false;
       }
+
+      if (limitSpread == Decimal.parse(env['stopOpen_Spread'])) {
+        limitSpread = limitSpread + Decimal.parse(env['deltaSpread']);
+        startBotTrading = true;
+        print('');
+        print(DateTime.now());
+        print('START TRADING SPREAD!!');
+        print('new limit spread: ${limitSpread}');
+      }
+    }
+  }
+
+  close_All(symbol) async {
+    if (data_trade['activeOrders'].length > 0) {
+      cancel_limit_order_all(
+          channel: channelMaster,
+          symbol: '${symbol}-PERP',
+          px: 0,
+          side: 'SELL');
+      cancel_limit_order_all(
+          channel: channelMaster, symbol: '${symbol}-PERP', px: 0, side: 'BUY');
+    }
+    if (open_contracts.length > 0) {
+      await funzione_closeAll_Contract(symbol);
     }
   }
 

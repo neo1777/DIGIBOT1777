@@ -14,3 +14,5 @@ dev_dependencies:
   test: ^1.14.4
   random_string: ^2.1.0
   dotenv: ^2.0.0
+  moving_average: ^0.3.0
+  decimal: ^1.1.0

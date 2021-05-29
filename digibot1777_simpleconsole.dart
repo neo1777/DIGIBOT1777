@@ -31,6 +31,7 @@ Future<void> main(List<String> arguments) async {
           '${now.day}/${now.month}/${now.year} - ${now.hour}:${now.minute} Run time hours: ${difference.inHours}');
       print('Profit balance: ${dgtx.diff_balance}');
       print('Spread average: ${dgtx.mean} limit: ${dgtx.limitSpread}');
+      print('Media exp factor 0.1: ${dgtx.mean_exponential}');
     });
   }
 }
