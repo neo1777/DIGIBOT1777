@@ -32,6 +32,10 @@ Future<void> main(List<String> arguments) async {
       print('Profit balance: ${dgtx.diff_balance}');
       print('Spread average: ${dgtx.mean} limit: ${dgtx.limitSpread}');
       print('Media exp factor 0.1: ${dgtx.mean_exponential}');
+      if (env['DeltaOrdiniVariabile'] != '0') {
+        print('Delta ordini: ${dgtx.funzioneDeltaOrdini()}');
+      }
+      //print('stopMetod: ${dgtx.stopMetod}');
     });
   }
 }

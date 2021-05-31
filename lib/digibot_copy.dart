@@ -78,6 +78,7 @@ class WebSocketProvide {
   List<num> diffOrderbook = [];
   var mean = 0.0;
   var mean_exponential = 0.0;
+  int stopMetod = 0;
 
   Decimal limitSpread = Decimal.parse(env['stopOpen_Spread']);
   bool firstTimeUp = true;
@@ -419,7 +420,10 @@ class WebSocketProvide {
         balance_Start = balance;
       }
       diff_balance = balance - balance_Start;
-      funzione_Balance(diff_balance, data['symbol']);
+      if (stopMetod == 0 || stopMetod == 1) {
+        funzione_Balance(diff_balance, data['symbol']);
+      }
+
       if (env['print_info_bal'] == 'true') {
         print(
             'trader diff_balance: ${diff_balance} average: ${mean} limit: ${limitSpread}');
@@ -428,19 +432,26 @@ class WebSocketProvide {
 
     if (upnl_Start != trader_upnl) {
       upnl_Start = trader_upnl;
-      funzione_UPnL(trader_upnl, data['symbol']);
+      if (stopMetod == 0 || stopMetod == 2) {
+        funzione_UPnL(trader_upnl, data['symbol']);
+      }
+
       if (env['print_info_upnl'] == 'true') {
         print('trader UPnL: ${trader_upnl}');
       }
     }
 
     if (env['stopOpen_Spread'] != '0') {
-      funzione_filter_spread(env['Cross']);
+      if (stopMetod == 0 || stopMetod == 3) {
+        funzione_filter_spread(env['Cross']);
+      }
     } else {}
 
     if (open_contracts_start != positionContracts) {
       open_contracts_start = positionContracts;
-      funzione_open_contracts(positionContracts, data['symbol']);
+      if (stopMetod == 0 || stopMetod == 4) {
+        funzione_open_contracts(positionContracts, data['symbol']);
+      }
 
       if (env['print_info_ctr'] == 'true') {
         print('trader Open_contracts: ${open_contracts_start}');
@@ -616,11 +627,21 @@ class WebSocketProvide {
     }
   }
 
+  funzioneDeltaOrdini() {
+    int deltaOrdini = int.parse(env['DeltaOrdini']);
+    if (double.parse(env['DeltaOrdiniVariabile']) > 0) {
+      deltaOrdini =
+          int.parse(mean.toString().split('.')[1].substring(0, 1)) + 1;
+    }
+
+    return deltaOrdini;
+  }
+
   funzioneOrdini(simb) async {
     var sideX = '';
-    var numero = n_order;
+    var numero = n_order + funzioneDeltaOrdini();
     if (env['Alternate'] == 'true') {
-      numero = n_order * 2;
+      numero = (n_order + funzioneDeltaOrdini()) * 2;
     }
     if (int.parse(env['AddLimit']) > 0) {
       if (data_trade['positionType'] == null) {
@@ -658,7 +679,7 @@ class WebSocketProvide {
         }
       }
     }
-    var lmt_down = int.parse(env['DeltaOrdini']);
+    var lmt_down = funzioneDeltaOrdini();
     var ladderPxMax_Near =
         ladderPx + (lmt_down * ws_util.tickSize('${simb}-PERP'));
     var ladderPxMin_Near =
@@ -684,7 +705,7 @@ class WebSocketProvide {
     }
 
     for (var i = 0; i < numero; i++) {
-      if (i > int.parse(env['DeltaOrdini'])) {
+      if (i > funzioneDeltaOrdini()) {
         var priceToadd_S = ladderPx + (i * ws_util.tickSize('${simb}-PERP'));
 
         if (funzioneRound(simb, priceToadd_S) && attiva_SELL) {
@@ -694,7 +715,7 @@ class WebSocketProvide {
       }
     }
     for (var i = 0; i > -numero; i--) {
-      if (i < -int.parse(env['DeltaOrdini'])) {
+      if (i < -funzioneDeltaOrdini()) {
         var priceToadd_B = ladderPx + (i * ws_util.tickSize('${simb}-PERP'));
         if (funzioneRound(simb, priceToadd_B) && attiva_BUY) {
           ladderPx_List_DW.add(priceToadd_B);
@@ -821,9 +842,9 @@ class WebSocketProvide {
   }
 
   bool funzione_Max_Orders(symbol, price) {
-    var lmt = int.parse(env['OrdersLimit']);
+    var lmt = int.parse(env['OrdersLimit']) + funzioneDeltaOrdini();
     if (env['Alternate'] == 'true') {
-      lmt = int.parse(env['OrdersLimit']) * 2;
+      lmt = (int.parse(env['OrdersLimit']) + funzioneDeltaOrdini()) * 2;
     }
 
     var ladderPxMaxUp = ladderPx + (lmt * ws_util.tickSize(symbol));
@@ -887,6 +908,9 @@ class WebSocketProvide {
     if (stop != '0' &&
         bilancio.isNegative &&
         bilancio.abs() >= double.parse(stop)) {
+      if (stopMetod == 0) {
+        stopMetod = 1;
+      }
       print(
           'BALANCE (${metod_S}) stop (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
 
@@ -910,6 +934,10 @@ class WebSocketProvide {
         await Future.delayed(time);
         print('CONTINUE...${DateTime.now()}');
         startBotTrading = true;
+        if (stopMetod == 1) {
+          stopMetod = 0;
+        }
+
         print(
             'BALANCE (${metod_S}) restart (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
@@ -938,6 +966,10 @@ class WebSocketProvide {
     if (take != '0' &&
         !bilancio.isNegative &&
         bilancio.abs() >= double.parse(take)) {
+      if (stopMetod == 0) {
+        stopMetod = 1;
+      }
+
       print(
           'BALANCE (${metod_T}) stop (takeprofit): ${balance} - ${bilancio} - ${DateTime.now()}');
 
@@ -960,6 +992,10 @@ class WebSocketProvide {
         await Future.delayed(time);
         print('CONTINUE...${DateTime.now()}');
         startBotTrading = true;
+        if (stopMetod == 1) {
+          stopMetod = 0;
+        }
+
         print(
             'BALANCE (${metod_T}) restart (takeprofit): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
@@ -993,6 +1029,10 @@ class WebSocketProvide {
     var metod_S = env['metodoUPnLS'];
     var metod_T = env['metodoUPnLT'];
     if (stop != '0' && upnl.isNegative && upnl.abs() >= double.parse(stop)) {
+      if (stopMetod == 0) {
+        stopMetod = 2;
+      }
+
       print(
           'UPnL (${metod_S}) stop (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
 
@@ -1014,6 +1054,10 @@ class WebSocketProvide {
         await Future.delayed(time);
         print('CONTINUE...${DateTime.now()}');
         startBotTrading = true;
+        if (stopMetod == 2) {
+          stopMetod = 0;
+        }
+
         print(
             'UPnL (${metod_S}) restart (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
@@ -1036,6 +1080,10 @@ class WebSocketProvide {
       }
     }
     if (take != '0' && !upnl.isNegative && upnl.abs() >= double.parse(take)) {
+      if (stopMetod == 0) {
+        stopMetod = 2;
+      }
+
       print(
           'UPnL (${metod_T}) stop (takeprofit): ${balance} - ${bilancio} - ${DateTime.now()}');
 
@@ -1056,6 +1104,10 @@ class WebSocketProvide {
         await Future.delayed(time);
         print('CONTINUE...${DateTime.now()}');
         startBotTrading = true;
+        if (stopMetod == 2) {
+          stopMetod = 0;
+        }
+
         print(
             'UPnL (${metod_T}) restart (takeprofit): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
@@ -1084,6 +1136,10 @@ class WebSocketProvide {
     var metod_S_T = env['metodoOpen_Contracts'];
 
     if (stop_take != '0' && bilancio >= double.parse(stop_take)) {
+      if (stopMetod == 0) {
+        stopMetod = 4;
+      }
+
       if (env['print_limit_order'] == 'true') {
         print(
             'CNT (${metod_S_T}) stop (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
@@ -1109,6 +1165,10 @@ class WebSocketProvide {
         await Future.delayed(time);
         print('CONTINUE...${DateTime.now()}');
         startBotTrading = true;
+        if (stopMetod == 4) {
+          stopMetod = 0;
+        }
+
         print(
             'CNT (${metod_S_T}) restart (stoploss): ${balance} - ${bilancio} - ${DateTime.now()}');
       }
@@ -1158,6 +1218,10 @@ class WebSocketProvide {
     } else if (stop_take != '0' &&
         bilancio < double.parse(stop_take) &&
         (!attiva_BUY || !attiva_SELL)) {
+      if (stopMetod == 4) {
+        stopMetod = 0;
+      }
+
       attiva_BUY = true;
       attiva_SELL = true;
     }
@@ -1169,6 +1233,10 @@ class WebSocketProvide {
     //print('data_trade : ${data_trade}');
 
     if (limitSpread != 0 && mean >= limitSpread.toDouble()) {
+      if (stopMetod == 0) {
+        stopMetod = 3;
+      }
+
       if (firstTimeUp) {
         print('');
         print(DateTime.now());
@@ -1234,6 +1302,10 @@ class WebSocketProvide {
     } else if (limitSpread != 0 &&
         mean < limitSpread.toDouble() &&
         !startBotTrading) {
+      if (stopMetod == 3) {
+        stopMetod = 0;
+      }
+
       if (firstTimeDw) {
         print('');
         print(DateTime.now());
@@ -1251,6 +1323,8 @@ class WebSocketProvide {
         print('START TRADING SPREAD!!');
         print('new limit spread: ${limitSpread}');
       }
+      attiva_BUY = true;
+      attiva_SELL = true;
     }
   }
 
