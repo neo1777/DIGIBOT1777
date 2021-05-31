@@ -79,6 +79,8 @@ class WebSocketProvide {
   var mean = 0.0;
   var mean_exponential = 0.0;
   int stopMetod = 0;
+  double balanceMax = 0.0;
+  double balanceMin = 0.0;
 
   Decimal limitSpread = Decimal.parse(env['stopOpen_Spread']);
   bool firstTimeUp = true;
@@ -420,6 +422,12 @@ class WebSocketProvide {
         balance_Start = balance;
       }
       diff_balance = balance - balance_Start;
+      if (diff_balance > balanceMax) {
+        balanceMax = diff_balance;
+      }
+      if (diff_balance < balanceMin) {
+        balanceMin = diff_balance;
+      }
       if (stopMetod == 0 || stopMetod == 1) {
         funzione_Balance(diff_balance, data['symbol']);
       }

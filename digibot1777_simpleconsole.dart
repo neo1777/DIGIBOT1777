@@ -29,9 +29,14 @@ Future<void> main(List<String> arguments) async {
       print('');
       print(
           '${now.day}/${now.month}/${now.year} - ${now.hour}:${now.minute} Run time hours: ${difference.inHours}');
-      print('Profit balance: ${dgtx.diff_balance}');
-      print('Spread average: ${dgtx.mean} limit: ${dgtx.limitSpread}');
-      print('Media exp factor 0.1: ${dgtx.mean_exponential}');
+      print('Balance start: ${dgtx.balance_Start.toStringAsFixed(2)}');
+      print('Profit balance: ${dgtx.diff_balance.toStringAsFixed(2)}');
+      print('MAX Profit: ${dgtx.balanceMax.toStringAsFixed(2)}');
+      print('MIN Profit: ${dgtx.balanceMin.toStringAsFixed(2)}');
+      print(
+          'Spread average: ${dgtx.mean.toStringAsFixed(3)} limit: ${dgtx.limitSpread}');
+      print(
+          'Media exp factor 0.1: ${dgtx.mean_exponential.toStringAsFixed(3)}');
       if (env['DeltaOrdiniVariabile'] != '0') {
         print('Delta ordini: ${dgtx.funzioneDeltaOrdini()}');
       }
