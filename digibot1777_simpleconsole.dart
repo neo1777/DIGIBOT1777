@@ -15,6 +15,7 @@ Future<void> main(List<String> arguments) async {
         '${env['Cross']}-PERP@index',
         '${env['Cross']}-PERP@trades',
         '${env['Cross']}-PERP@ticker',
+        '${env['Cross']}-PERP@kline_1min',
         '${env['Cross']}-PERP@orderbook_1'
       ]);
   //} else {
@@ -41,6 +42,63 @@ Future<void> main(List<String> arguments) async {
         print('Delta ordini: ${dgtx.funzioneDeltaOrdini()}');
       }
       //print('stopMetod: ${dgtx.stopMetod}');
+      print('');
+      print('PARAMETRI');
+      print('-------------');
+      print('Cross: ${env['Cross']}');
+      print('Size: ${env['Size']}');
+      if (env['DeltaOrdiniVariabile'] != '0') {
+        print('DeltaOrdiniVariabile: ${env['DeltaOrdiniVariabile']}');
+      } else {
+        print('DeltaOrdini: ${env['DeltaOrdini']}');
+      }
+      if (env['AddLimit'] != '0') {
+        print('AddLimit: ${env['AddLimit']}');
+      }
+      print('N_ord_start: ${env['N_ord_start']}');
+      print('OrdersLimit: ${env['OrdersLimit']}');
+      if (env['Alternate'] != 'false') {
+        print('Alternate: ${env['Alternate']}');
+      }
+
+      if (env['stopBalance'] != '0') {
+        print('stopBalance: ${env['stopBalance']}');
+        print('metodoBalanceS: ${env['metodoBalanceS']}');
+        print('DelayStop: ${env['DelayStop']}');
+        print('SogliaCloseSoft: ${env['SogliaCloseSoft']}');
+      }
+      if (env['takeBalance'] != '0') {
+        print('takeBalance: ${env['takeBalance']}');
+        print('metodoBalanceT: ${env['metodoBalanceT']}');
+        print('DelayTake: ${env['DelayTake']}');
+        print('SogliaCloseSoft: ${env['SogliaCloseSoft']}');
+      }
+
+      if (env['stopUPnL'] != '0') {
+        print('stopUPnL: ${env['stopUPnL']}');
+        print('metodoUPnLS: ${env['metodoUPnLS']}');
+        print('DelayStop: ${env['DelayStop']}');
+        print('SogliaCloseSoft: ${env['SogliaCloseSoft']}');
+      }
+      if (env['takeUPnL'] != '0') {
+        print('takeUPnL: ${env['takeUPnL']}');
+        print('metodoUPnLT: ${env['metodoUPnLT']}');
+        print('DelayTake: ${env['DelayTake']}');
+        print('SogliaCloseSoft: ${env['SogliaCloseSoft']}');
+      }
+
+      if (env['stopOpen_Contracts'] != '0') {
+        print('stopOpen_Contracts: ${env['stopOpen_Contracts']}');
+        print('metodoOpen_Contracts: ${env['metodoOpen_Contracts']}');
+      }
+
+      if (env['stopOpen_Spread'] != '0') {
+        print('stopOpen_Spread: ${env['stopOpen_Spread']}');
+        print('deltaSpread: ${env['deltaSpread']}');
+        print('rangeMean: ${env['rangeMean']}');
+        print('close_instantly: ${env['close_instantly']}');
+      }
+      print('---');
     });
   }
 }

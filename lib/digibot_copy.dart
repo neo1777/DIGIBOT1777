@@ -187,6 +187,7 @@ class WebSocketProvide {
             if (env['print_handle'] == 'true') {
               print('await handle_kline(ws, resp);');
             }
+            print('kline: ${resp}');
           }
           break;
         case 'ticker':
