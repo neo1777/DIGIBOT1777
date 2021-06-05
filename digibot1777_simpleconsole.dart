@@ -5,6 +5,7 @@ import 'package:dotenv/dotenv.dart';
 Future<void> main(List<String> arguments) async {
   load();
   var dgtx = WebSocketProvide();
+  dgtx.time_start = DateTime.now();
   //print(dgtx.funzioneRound('${env['Cross']}-PERP', 1235));
   //if (await dgtx.funzione_Orario('${env['Cross']}-PERP')) {
   var str = await dgtx.getWsMaster(
@@ -29,7 +30,7 @@ Future<void> main(List<String> arguments) async {
       Duration difference = now.difference(dgtx.time_start);
       print('');
       print(
-          '${now.day}/${now.month}/${now.year} - ${now.hour}:${now.minute} Run time hours: ${difference.inHours}');
+          '${now.day}/${now.month}/${now.year} - ${now.hour}:${now.minute} Run time days/hours/minutes: ${difference.inDays}/${difference.inHours}/${difference.inMinutes}');
       print('Balance start: ${dgtx.balance_Start.toStringAsFixed(2)}');
       print('Profit balance: ${dgtx.diff_balance.toStringAsFixed(2)}');
       print('MAX Profit: ${dgtx.balanceMax.toStringAsFixed(2)}');
@@ -37,7 +38,11 @@ Future<void> main(List<String> arguments) async {
       print(
           'Spread average: ${dgtx.mean.toStringAsFixed(3)} limit: ${dgtx.limitSpread}');
       print(
-          'Media exp factor 0.1: ${dgtx.mean_exponential.toStringAsFixed(3)}');
+          'Media exp spread: ${dgtx.mean_exponential.toStringAsFixed(3)} - factor 0.1');
+      print(
+          'Speed average: ${dgtx.mean_speed_ladder.toStringAsFixed(3)} limit: ${dgtx.limitSpeed}');
+      print(
+          'Media exp speed: ${dgtx.mean_speed_ladder_exponential.toStringAsFixed(3)} - factor 0.1');
       if (env['DeltaOrdiniVariabile'] != '0') {
         print('Delta ordini: ${dgtx.funzioneDeltaOrdini()}');
       }

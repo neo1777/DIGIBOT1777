@@ -44,6 +44,12 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "clock",
+      "rootUri": "file:///home/neo1777/.pub-cache/hosted/pub.dartlang.org/clock-1.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "collection",
       "rootUri": "file:///home/neo1777/.pub-cache/hosted/pub.dartlang.org/collection-1.15.0",
       "packageUri": "lib/",
@@ -106,6 +112,12 @@
     {
       "name": "http_parser",
       "rootUri": "file:///home/neo1777/.pub-cache/hosted/pub.dartlang.org/http_parser-4.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "intl",
+      "rootUri": "file:///home/neo1777/.pub-cache/hosted/pub.dartlang.org/intl-0.17.0",
       "packageUri": "lib/",
       "languageVersion": "2.12"
     },
@@ -326,7 +338,7 @@
       "languageVersion": "2.8"
     }
   ],
-  "generated": "2021-05-29T07:02:43.004942Z",
+  "generated": "2021-06-02T05:51:49.363263Z",
   "generator": "pub",
   "generatorVersion": "2.13.0"
 }

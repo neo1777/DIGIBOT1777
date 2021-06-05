@@ -16,3 +16,4 @@ dev_dependencies:
   dotenv: ^2.0.0
   moving_average: ^0.3.0
   decimal: ^1.1.0
+  intl: ^0.17.0

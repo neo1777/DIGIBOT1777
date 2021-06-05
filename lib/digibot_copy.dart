@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:moving_average/moving_average.dart';
 import 'package:decimal/decimal.dart';
+import 'package:intl/intl.dart';
 
 class Ws_Util {
   static int req_id = 0;
@@ -76,15 +77,21 @@ class WebSocketProvide {
   bool cancel_B = true;
   bool cancel_S = true;
   List<num> diffOrderbook = [];
+  List<num> diffLadder = [];
   var mean = 0.0;
   var mean_exponential = 0.0;
+  var mean_speed_ladder = 0.0;
+  var mean_speed_ladder_exponential = 0.0;
   int stopMetod = 0;
   double balanceMax = 0.0;
   double balanceMin = 0.0;
 
   Decimal limitSpread = Decimal.parse(env['stopOpen_Spread']);
+  Decimal limitSpeed = Decimal.parse(env['stopOpen_Speed']);
   bool firstTimeUp = true;
   bool firstTimeDw = true;
+  int timeLadderOld = 0;
+  double priceLadderOld = 0.0;
 
   Stream getWsMaster({String uri, String simb, String authcode, List params}) {
     channelMaster = IOWebSocketChannel.connect(uri);
@@ -333,16 +340,21 @@ class WebSocketProvide {
     //print('orderbook: ${(data['asks'][0][0] - data['bids'][0][0]) / 5}');
     diffOrderbook.add((data['asks'][0][0] - data['bids'][0][0]) /
         Ws_Util().tickSize(env['Cross']));
+    if (diffOrderbook.length > int.parse(env['rangeMean'])) {
+      diffOrderbook.removeAt(0);
+      //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
+    }
+
     final simpleMovingAverage = MovingAverage<num>(
       averageType: AverageType.simple,
-      windowSize: int.parse(env['rangeMean']),
+      windowSize: diffOrderbook.length,
       partialStart: true,
       getValue: (num n) => n,
       add: (List<num> data, num value) => value,
     );
     final ema = MovingAverage<num>(
       averageType: AverageType.exponential,
-      windowSize: int.parse(env['rangeMean']),
+      windowSize: diffOrderbook.length,
       partialStart: true,
       factor: 0.1,
       getValue: (num n) => n,
@@ -351,14 +363,68 @@ class WebSocketProvide {
     final exponential = ema(diffOrderbook);
     final movingAverage3 = simpleMovingAverage(diffOrderbook);
     //print("Moving Average, size 500, last = ${movingAverage3.last}");
-    if (diffOrderbook.length > int.parse(env['rangeMean'])) {
-      diffOrderbook.removeAt(0);
-      //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
-    }
     //print('orderbook list: ${diffOrderbook}');
     //mean = diffOrderbook.reduce((a, b) => a + b) / diffOrderbook.length;
     mean = movingAverage3.last;
     mean_exponential = exponential.last;
+
+    //print('orderbook mean: ${mean} length: ${diffOrderbook.length}');
+  }
+
+  Future speedLadder(item, ladderPrice) async {
+    //print('speedLadder: ${item}');
+    //print('orderbook_BID: ${data['bids'][0][0]}');
+    //print('orderbook_ASK: ${data['asks'][0][0]}');
+    //print('orderbook: ${(data['asks'][0][0] - data['bids'][0][0]) / 5}');
+    if (timeLadderOld <= 0) {
+      timeLadderOld = item['ts'];
+    }
+    if (priceLadderOld <= 0) {
+      priceLadderOld = item['px'].toDouble();
+    }
+    var deltaTime = item['ts'] - timeLadderOld;
+    var deltaPrice = (item['px'] - priceLadderOld).abs();
+    if (deltaTime <= 0) {
+      return;
+    }
+    if (deltaPrice <= 0) {
+      deltaPrice = 1;
+    }
+    var deltaL = deltaTime / deltaPrice / 1000;
+    print('deltaTime: ${deltaTime} deltaPrice: ${deltaPrice} delta: ${deltaL}');
+    diffLadder.add((deltaL));
+    if (diffLadder.length > int.parse(env['rangeMeanSpeed'])) {
+      diffLadder.removeAt(0);
+      //print('orderbook remove: ${diffOrderbook.removeAt(0)}');
+    }
+
+    final simpleMovingAverage = MovingAverage<num>(
+      averageType: AverageType.simple,
+      windowSize: diffLadder.length,
+      partialStart: true,
+      getValue: (num n) => n,
+      add: (List<num> data, num value) => value,
+    );
+    final ema = MovingAverage<num>(
+      averageType: AverageType.exponential,
+      windowSize: diffLadder.length,
+      partialStart: true,
+      factor: 0.1,
+      getValue: (num n) => n,
+      add: (List<num> data, num value) => value,
+    );
+    final exponential = ema(diffLadder);
+    final movingAverage3 = simpleMovingAverage(diffLadder);
+    //print("Moving Average, size 500, last = ${movingAverage3.last}");
+    //print('diffLadder: ${diffLadder}');
+    //print(
+    //'average speed: ${diffLadder.reduce((a, b) => a + b) / diffLadder.length}');
+    //mean = diffOrderbook.reduce((a, b) => a + b) / diffOrderbook.length;
+    timeLadderOld = item['ts'];
+    priceLadderOld = item['px'].toDouble();
+
+    mean_speed_ladder = movingAverage3.last;
+    mean_speed_ladder_exponential = exponential.last;
 
     //print('orderbook mean: ${mean} length: ${diffOrderbook.length}');
   }
@@ -368,7 +434,7 @@ class WebSocketProvide {
     var data = msg['data'];
     if (data['available'] == true) {
       trading_available = true;
-      time_start = DateTime.now();
+      //time_start = DateTime.now();
       print('Time: ${time_start}');
       print('trading: AVAILABLE');
     } else {
@@ -382,6 +448,14 @@ class WebSocketProvide {
   Future handle_trades(ws, msg, simb) async {
     for (var item in msg['data']['trades']) {
       ladderPx = item['px'].toDouble();
+      speedLadder(item, ladderPx);
+      /*
+      final DateTime now = DateTime.fromMillisecondsSinceEpoch(item['ts']);
+      final DateFormat formatter = DateFormat('yyyy-MM-dd HH:mm:ss');
+      final String formatted = formatter.format(now);
+      print('');
+      print('ladder time: ${formatted}'); // something like 2013-04-20
+      */
     }
     getTraderStatus(channel: channelMaster, symbol: '${simb}-PERP');
   }
@@ -453,6 +527,11 @@ class WebSocketProvide {
     if (env['stopOpen_Spread'] != '0') {
       if (stopMetod == 0 || stopMetod == 3) {
         funzione_filter_spread(env['Cross']);
+      }
+    } else {}
+    if (env['stopOpen_Speed'] != '0') {
+      if (stopMetod == 0 || stopMetod == 5) {
+        funzione_filter_speed(env['Cross']);
       }
     } else {}
 
@@ -853,29 +932,31 @@ class WebSocketProvide {
   bool funzione_Max_Orders(symbol, price) {
     var lmt = int.parse(env['OrdersLimit']) + funzioneDeltaOrdini();
     if (env['Alternate'] == 'true') {
-      lmt = (int.parse(env['OrdersLimit']) + funzioneDeltaOrdini()) * 2;
+      lmt = int.parse(env['OrdersLimit']) + funzioneDeltaOrdini() * 2;
     }
 
     var ladderPxMaxUp = ladderPx + (lmt * ws_util.tickSize(symbol));
     var ladderPxMinDw = ladderPx - (lmt * ws_util.tickSize(symbol));
-
-    if (price > ladderPxMaxUp) {
+    //print('price : $price $ladderPx');
+    if (price >= ladderPxMaxUp) {
+      //print('price > ladderPxMaxUp: $ladderPxMaxUp');
       cancel_limit_order_all(
           channel: channelMaster, symbol: symbol, px: price, side: '');
       return false;
     }
-    if (price < ladderPxMinDw) {
+    if (price <= ladderPxMinDw) {
+      //print('price < ladderPxMinDw: $ladderPxMinDw');
       cancel_limit_order_all(
           channel: channelMaster, symbol: symbol, px: price, side: '');
       return false;
     }
-
+    /*
     if (!active_orders_ListPx_controll.contains(price)) {
       cancel_limit_order_all(
           channel: channelMaster, symbol: symbol, px: price, side: '');
       return false;
     }
-
+    */
     return true;
   }
 
@@ -1283,7 +1364,10 @@ class WebSocketProvide {
         close_All(symbol);
         //print('close_instantly');
       } else {
-        print('close_delay');
+        if (stopMetod == 3) {
+          stopMetod = 0;
+        }
+        //print('close_delay');
         if (data_trade['positionContracts'] == 0) {
           if (startBotTrading) {
             startBotTrading = false;
@@ -1334,6 +1418,67 @@ class WebSocketProvide {
       }
       attiva_BUY = true;
       attiva_SELL = true;
+    }
+  }
+
+  funzione_filter_speed(symbol) async {
+    if (limitSpeed != 0 && mean_speed_ladder <= limitSpeed.toDouble()) {
+      if (stopMetod == 0) {
+        stopMetod = 5;
+      }
+
+      if (env['close_instantly_speed'] == 'true') {
+        //print('close_instantly');
+        if (startBotTrading) {
+          startBotTrading = false;
+        }
+        close_All(symbol);
+        //print('close_instantly');
+      } else {
+        if (stopMetod == 5) {
+          stopMetod = 0;
+        }
+        //print('close_delay');
+        if (data_trade['positionContracts'] == 0) {
+          if (startBotTrading) {
+            startBotTrading = false;
+          }
+
+          if (data_trade['activeOrders'].length != 0) {
+            cancel_limit_order_all(
+                channel: channelMaster,
+                symbol: '${symbol}-PERP',
+                px: 0,
+                side: 'SELL');
+            cancel_limit_order_all(
+                channel: channelMaster,
+                symbol: '${symbol}-PERP',
+                px: 0,
+                side: 'BUY');
+          }
+        }
+        if (data_trade['positionContracts'] != 0 &&
+            data_trade['activeOrders'].length == 0) {
+          await funzione_closeAll_Contract(symbol);
+          close_All(symbol);
+        }
+      }
+      print('');
+      print(DateTime.now());
+      print('STOP TRADING SPEED!!');
+    }
+    if (limitSpeed != 0 &&
+        mean_speed_ladder > limitSpeed.toDouble() &&
+        !startBotTrading) {
+      if (stopMetod == 5) {
+        stopMetod = 0;
+      }
+
+      attiva_BUY = true;
+      attiva_SELL = true;
+      print('');
+      print(DateTime.now());
+      print('START TRADING SPEED!!');
     }
   }
 
